@@ -32,6 +32,25 @@ use crate::tcp_type::*;
 pub(crate) const RECEIVE_MTU: usize = 8192;
 pub(crate) const DEFAULT_LOCAL_PREFERENCE: u16 = 65535;
 
+// GBNAT PATCH (GBNAT-81): with every UDP candidate at the same local preference, the family a session ends up
+// on is decided by check order and timing. An L4S session needs IPv6 where the path clears ECN on IPv4 (GCP).
+static PREFER_UDP6: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// GBNAT PATCH (GBNAT-81): rank UDP candidates on IPv6 above those on IPv4 (local preference 65535 vs 65534).
+/// Process-wide; both families are still gathered and either can still connect.
+pub fn set_prefer_udp6(on: bool) {
+    PREFER_UDP6.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// GBNAT PATCH (GBNAT-81): the local preference of a UDP candidate of this family.
+pub fn udp_local_preference(network_type: NetworkType) -> u16 {
+    if PREFER_UDP6.load(std::sync::atomic::Ordering::Relaxed) && network_type == NetworkType::Udp4 {
+        DEFAULT_LOCAL_PREFERENCE - 1
+    } else {
+        DEFAULT_LOCAL_PREFERENCE
+    }
+}
+
 /// Indicates that the candidate is used for RTP.
 pub(crate) const COMPONENT_RTP: u16 = 1;
 /// Indicates that the candidate is used for RTCP.

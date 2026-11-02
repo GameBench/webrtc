@@ -382,7 +382,7 @@ impl CandidateBase {
 
             (1 << 13) * direction_pref + other_pref
         } else {
-            DEFAULT_LOCAL_PREFERENCE
+            super::udp_local_preference(self.network_type()) // GBNAT PATCH (GBNAT-81)
         }
     }
 }
